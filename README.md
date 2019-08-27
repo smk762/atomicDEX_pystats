@@ -13,9 +13,10 @@ returns success rate for all files on seed node
 optional args:
 
 `pair` - in format TICKER_TICKER (e.g. KMD_BTC) filter data for ticker
-`date` - in format DDMMYY_DDMMYY - filter data for given dates range
+`from` - 13 digits timestamp (miliseconds epoch)
+`to` - 13 digits timestamp (miliseconds epoch)
 
- these args possible to combine, e.g. `/atomicstats/api/v1.0/get_success_rate?pair=BTC_KMD&date=010819_300819`
+ these args possible to combine, e.g. `/atomicstats/api/v1.0/get_success_rate?pair=BTC_KMD&from=1564658276000&to=156690467900`
 
 
 2) get swaps volume (wip)

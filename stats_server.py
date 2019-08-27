@@ -14,22 +14,61 @@ def home():
 @app.route('/atomicstats/api/v1.0/get_success_rate', methods=['GET'])
 def get_volumes():
     query_parameters = request.args
-    if "pair" in query_parameters and "date" in query_parameters:
-        #TODO: implement - note that need to convert human readable data into 13 digits timestamp
-        success_rate = "success rate with pair and date filters"
-    elif "pair" in query_parameters and "date" not in query_parameters:
-        #TODO: handle crash on not correct ticker usage
+    if "pair" in query_parameters and "from" in query_parameters and "to" in query_parameters:
         pair = request.args["pair"]
         tickers = request.args["pair"].split("_")
-        success_rate = stats_lib.count_successful_swaps(stats_lib.pair_filter(stats_lib.fetch_local_swap_files(), tickers[0], tickers[1]))
+        try:
+            pair_filtered_data = stats_lib.pair_filter(stats_lib.fetch_local_swap_files(), tickers[0], tickers[1])
+        except IndexError:
+            data = {
+            "result" : "error",
+            "error" : "not valid tickers"
+            }
+            response = app.response_class(
+                response=json.dumps(data),
+                status=400,
+                mimetype='application/json'
+            )
+            return response
+        if int(request.args["from"]) > int(request.args["to"]):
+            data = {
+            "result" : "error",
+            "error" : "from date should be before to date"
+            }
+            response = app.response_class(
+                response=json.dumps(data),
+                status=400,
+                mimetype='application/json'
+            )
+            return response
+            #???
+        if len(request.args["from"]) != 13 or len(request.args["to"] != 13):
+            data = {
+            "result" : "error",
+            "error" : "please use miliseconds 13 digits timestamp"
+            }
+            response = app.response_class(
+                response=json.dumps(data),
+                status=400,
+                mimetype='application/json'
+            )
+            return response
+        time_filtered_data = stats_lib.time_filter(pair_filtered_data, int(request.args["from"]), int(request.args["to"]))
+        success_rate = stats_lib.count_successful_swaps(time_filtered_data)
+    elif "pair" in query_parameters and "date" not in query_parameters:
+        pair = request.args["pair"]
+        tickers = request.args["pair"].split("_")
+        pair_filtered_data = stats_lib.pair_filter(stats_lib.fetch_local_swap_files(), tickers[0], tickers[1])
+        success_rate = stats_lib.count_successful_swaps(pair_filtered_data)
     elif "pair" not in query_parameters and "date" in query_parameters:
-        #TODO: implement
-        success_rate = "success rate for dates"
-        pair = "stub"
+        pair = "all"
+        time_filtered_data = stats_lib.time_filter(pair_filtered_data, int(request.args["from"]), int(request.args["to"]))
+        success_rate = stats_lib.count_successful_swaps(time_filtered_data)
     else:
         success_rate = stats_lib.count_successful_swaps(stats_lib.fetch_local_swap_files())
         pair = "all"
     data = {
+    "result": "success",
     "pair" : pair,
     "total": success_rate[1] + success_rate[0],
     "successful": success_rate[1],

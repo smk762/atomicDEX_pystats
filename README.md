@@ -4,7 +4,7 @@ WIP!
 
 Calls:
 
-1) get swaps success rate (wip)
+1) get swaps success rate
 
 `/atomicstats/api/v1.0/get_success_rate`
 

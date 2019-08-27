@@ -30,6 +30,17 @@ def get_volumes():
                 mimetype='application/json'
             )
             return response
+        if (len(request.args["from"]) != 13) or (len(request.args["to"]) != 13):
+            data = {
+            "result" : "error",
+            "error" : "please use miliseconds 13 digits timestamp"
+            }
+            response = app.response_class(
+                response=json.dumps(data),
+                status=400,
+                mimetype='application/json'
+            )
+            return response
         if int(request.args["from"]) > int(request.args["to"]):
             data = {
             "result" : "error",
@@ -41,18 +52,7 @@ def get_volumes():
                 mimetype='application/json'
             )
             return response
-            #???
-        if len(request.args["from"]) != 13 or len(request.args["to"] != 13):
-            data = {
-            "result" : "error",
-            "error" : "please use miliseconds 13 digits timestamp"
-            }
-            response = app.response_class(
-                response=json.dumps(data),
-                status=400,
-                mimetype='application/json'
-            )
-            return response
+
         time_filtered_data = stats_lib.time_filter(pair_filtered_data, int(request.args["from"]), int(request.args["to"]))
         success_rate = stats_lib.count_successful_swaps(time_filtered_data)
     elif "pair" in query_parameters and "date" not in query_parameters:

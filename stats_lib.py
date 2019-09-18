@@ -70,15 +70,15 @@ def count_successful_swaps(swaps_data):
                 successful_swaps_counter += 1
     return (failed_swaps_counter, successful_swaps_counter)
 
-# calculate volumes
-# TODO: ETH/ERC volumes seems not possible to calculate this way
+# calculate volumes, assumes filtered data for pair
 def calculate_trades_volumes(swaps_data):
     maker_coin_volume = 0
     taker_coin_volume = 0
     for swap_data in swaps_data.values():
-        for event in swap_data["events"]:
-            if event["event"]["type"] == "MakerPaymentSent":
-                maker_coin_volume += abs(event["event"]["data"]["my_balance_change"])
-            elif event["event"]["type"] == "TakerPaymentSpent":
-                taker_coin_volume += abs(event["event"]["data"]["my_balance_change"])
+        try:
+            maker_coin_volume += float(swap_data["events"][0]["event"]["data"]["maker_amount"])
+            taker_coin_volume += float(swap_data["events"][0]["event"]["data"]["taker_amount"])
+        except Exception as e:
+            print(swap_data["events"][0])
+            print(e)
     return (maker_coin_volume, taker_coin_volume)

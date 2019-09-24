@@ -62,12 +62,17 @@ def time_filter(data_to_filter, start_time_stamp, end_time_stamp):
 def count_successful_swaps(swaps_data):
     successful_swaps_counter = 0
     failed_swaps_counter = 0
+    i = 0
     for swap_data in swaps_data.values():
+        failed = False
         for event in swap_data["events"]:
             if event["event"]["type"] in error_events:
-                failed_swaps_counter += 1
-            else:
-                successful_swaps_counter += 1
+                failed = True
+                break
+        if failed:
+            failed_swaps_counter += 1
+        else:
+            successful_swaps_counter += 1
     return (failed_swaps_counter, successful_swaps_counter)
 
 # calculate volumes, assumes filtered data for pair

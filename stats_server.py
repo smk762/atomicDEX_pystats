@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import flask
 from flask import json, request
 import stats_lib
@@ -142,7 +143,7 @@ def get_fails():
     data = {
     "result": "success",
     "fail_events": success_rate[2],
-    "fail_info": success_rate[3],
+    "fail_info": success_rate[3]
     }
     response = app.response_class(
         response=json.dumps(data),
@@ -155,4 +156,5 @@ def get_fails():
 # @app.route('/atomicstats/api/v1.0/get_volumes', methods=['GET'])
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=3134)
+    app.run(debug=True)
+

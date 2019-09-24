@@ -13,11 +13,15 @@ error_events = [
     "MakerPaymentRefundFailed"
   ]
 
-stats_folder = "/home/smk762/pytomicDEX/DB/32ef2795d92eda216e7dbba5ede2a7f4350c8a94/SWAPS/STATS/"
+stats_folder = "enter path to stats folder here"
+# e.g. "/home/username/mm2/DB/node_pubkey/SWAPS/STATS/"
 
-# assuming start from DB/%NODE_PUBKEY%/SWAPS/STATS/ directory
 def fetch_local_swap_files():
-    os.chdir(stats_folder)
+    try:
+        os.chdir(stats_folder)
+    except:
+        print("Folder ("+stats_folder+") not found! Confirm correct path set in stats_lib.py")
+        exit(0)
     files_list_tmp = os.listdir("MAKER")
     files_list = []
     for file in files_list_tmp:
@@ -69,7 +73,6 @@ def count_successful_swaps(swaps_data):
         error_type_counts[event] = 0
     successful_swaps_counter = 0
     failed_swaps_counter = 0
-    i = 0
     for swap_data in swaps_data.values():
         failed = False
         for event in swap_data["events"]:
@@ -83,6 +86,7 @@ def count_successful_swaps(swaps_data):
                 fail_error = event["event"]["data"]['error']
                 fail_data = {
                     "uuid": fail_uuid,
+                    "fail_event": event["event"]["type"],
                     "time": fail_timestamp,
                     "pair": taker_coin+" - "+maker_coin,
                     "taker_pub": taker_pub,

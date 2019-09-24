@@ -1,6 +1,8 @@
-API for seed node jsons parser
+API for seed node jsons parser (WIP!)
 
-WIP!
+Setup: Must set stats DB data folder in stats_lib.py   
+e.g. "/home/username/mm2/DB/node_pubkey/SWAPS/STATS/"
+
 
 Calls:
 

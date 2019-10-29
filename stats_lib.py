@@ -13,8 +13,15 @@ error_events = [
     "MakerPaymentRefundFailed"
   ]
 
-# assuming start from DB/%NODE_PUBKEY%/SWAPS/STATS/ directory
+stats_folder = "enter path to stats folder here"
+# e.g. "/home/username/mm2/DB/node_pubkey/SWAPS/STATS/"
+
 def fetch_local_swap_files():
+    try:
+        os.chdir(stats_folder)
+    except:
+        print("Folder ("+stats_folder+") not found! Confirm correct path set in stats_lib.py")
+        exit(0)
     files_list_tmp = os.listdir("MAKER")
     files_list = []
     for file in files_list_tmp:
@@ -60,19 +67,39 @@ def time_filter(data_to_filter, start_time_stamp, end_time_stamp):
 
 # checking if swap succesfull
 def count_successful_swaps(swaps_data):
+    fails_info = []
+    error_type_counts = {}
+    for event in error_events:
+        error_type_counts[event] = 0
     successful_swaps_counter = 0
     failed_swaps_counter = 0
     for swap_data in swaps_data.values():
         failed = False
         for event in swap_data["events"]:
             if event["event"]["type"] in error_events:
+                error_type_counts[event["event"]["type"]] += 1
+                taker_coin = swap_data["events"][0]['event']['data']['taker_coin']
+                maker_coin = swap_data["events"][0]['event']['data']['maker_coin']
+                taker_pub = swap_data["events"][0]['event']['data']['taker']
+                fail_uuid = swap_data['uuid']
+                fail_timestamp = event['timestamp']
+                fail_error = event["event"]["data"]['error']
+                fail_data = {
+                    "uuid": fail_uuid,
+                    "fail_event": event["event"]["type"],
+                    "time": fail_timestamp,
+                    "pair": taker_coin+" - "+maker_coin,
+                    "taker_pub": taker_pub,
+                    "error": fail_error
+                }
+                fails_info.append(fail_data)
                 failed = True
                 break
         if failed:
             failed_swaps_counter += 1
         else:
             successful_swaps_counter += 1
-    return (failed_swaps_counter, successful_swaps_counter)
+    return (failed_swaps_counter, successful_swaps_counter, error_type_counts, fails_info)
 
 # calculate volumes, assumes filtered data for pair
 def calculate_trades_volumes(swaps_data):

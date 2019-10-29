@@ -93,7 +93,8 @@ def gui_filter(data_to_filter, gui_type):
             gui_types.append(gui)
         try:
             if gui_type == gui:
-                swaps_of_gui[swap_data["events"][0]["event"]["data"]["uuid"]] = swap_data
+                #if gui != 'pytomicDEX' and gui != 'MM2GUI':
+                   swaps_of_gui[swap_data["events"][0]["event"]["data"]["uuid"]] = swap_data
         except Exception as e:
             #print(e)
             pass
@@ -172,12 +173,12 @@ def count_successful_swaps(swaps_data, from_timestamp=0, to_timestamp=9999999999
                         failed_events_data[swap_data["uuid"]]["maker_fail_event_type"] = event["event"]["type"]
                         failed_events_data[swap_data["uuid"]]["maker_error"] = event["event"]["data"]["error"]
                     break
-            if failed:
-                gui_types[gui_type]['failed'] += 1
-            else:
-                gui_types[gui_type]['successful'] += 1
-            if taker_addr not in ignored_addresses:
-                if swap_time_include:
+            if swap_time_include:
+                if failed:
+                    gui_types[gui_type]['failed'] += 1
+                else:
+                    gui_types[gui_type]['successful'] += 1
+                if taker_addr not in ignored_addresses:
                     if failed:
                         taker_addresses[taker_addr]['failed'] += 1
                         failed_swaps_counter += 1

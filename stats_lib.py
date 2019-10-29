@@ -40,7 +40,6 @@ ignore_events = [
 
 
 # assuming start from DB/%NODE_PUBKEY%/SWAPS/STATS/ directory
-# TODO TAKER folder?
 def fetch_local_swap_files():
     files_content = {}
     files_list_tmp = os.listdir('MAKER')

@@ -88,7 +88,7 @@ def get_volumes():
             data.update({"success_rate": str(pct)+"%"})
     response = app.response_class(
         response=json.dumps(data),
-        status=400,
+        status=200,
         mimetype='application/json'
     )
     return response

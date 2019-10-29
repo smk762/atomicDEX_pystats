@@ -41,26 +41,24 @@ ignore_events = [
 
 # assuming start from DB/%NODE_PUBKEY%/SWAPS/STATS/ directory
 # TODO TAKER folder?
-def fetch_local_swap_files(folder_names=['MAKER', 'TAKER']):
-    folder_names=['MAKER']
+def fetch_local_swap_files():
     files_content = {}
-    for folder_name in folder_names:
-        files_list_tmp = os.listdir(folder_name)
-        files_list = []
-        for file in files_list_tmp:
-            if file[-5:] == '.json':
-                files_list.append(file)
+    files_list_tmp = os.listdir('MAKER')
+    files_list = []
+    for file in files_list_tmp:
+        if file[-5:] == '.json':
+            files_list.append(file)
 
-        # loading files content into files_content dict
-        for file in files_list:
-            try:
-                with open(folder_name+"/"+file) as json_file:
-                    swap_uuid = file[:-5]
-                    data = json.load(json_file)
-                    files_content[swap_uuid] = data
-            except Exception as e:
-                print(e)
-                print("Broken: " + file)
+    # loading files content into files_content dict
+    for file in files_list:
+        try:
+            with open('MAKER'+"/"+file) as json_file:
+                swap_uuid = file[:-5]
+                data = json.load(json_file)
+                files_content[swap_uuid] = data
+        except Exception as e:
+            print(e)
+            print("Broken: " + file)
     return files_content
 
 

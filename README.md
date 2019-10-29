@@ -4,11 +4,18 @@ WIP!
 
 Calls:
 
-1) get swaps success rate
+1) Get swaps success rate
 
 `/atomicstats/api/v1.0/get_success_rate`
 
 Returns success rate for all files on seed node
+
+2) Get failed swaps info
+
+
+`/atomicstats/api/v1.0/get_fail_data`
+
+Outputs fail events info for all swaps on seed node. Include counts for each fail event type, and uuid, timestamp, trade pair and error message for failing swaps.
 
 Optional args:
 

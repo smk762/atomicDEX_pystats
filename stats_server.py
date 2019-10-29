@@ -1,147 +1,204 @@
 #!/usr/bin/env python3
-import flask
-from flask import json, request
-import stats_lib
-from datetime import datetime, timezone
+import os
+import json
+import bitcoin
+from bitcoin.wallet import P2PKHBitcoinAddress
+from bitcoin.core import x
+from bitcoin.core import CoreMainParams
 
-app = flask.Flask(__name__)
-app.config["DEBUG"] = True
+class CoinParams(CoreMainParams):
+    MESSAGE_START = b'\x24\xe9\x27\x64'
+    DEFAULT_PORT = 7770
+    BASE58_PREFIXES = {'PUBKEY_ADDR': 60,
+                       'SCRIPT_ADDR': 85,
+                       'SECRET_KEY': 188}
+bitcoin.params = CoinParams
+
+def get_radd_from_pub(pub):
+    try:
+        taker_addr = str(P2PKHBitcoinAddress.from_pubkey(x("02"+pub)))
+    except:
+        taker_addr = pub
+    return str(taker_addr)
+
+error_events = [
+    # ignoring early fail events as swap not yet started
+    #"StartFailed",
+    #"NegotiateFailed",
+    "TakerFeeValidateFailed",
+    "MakerPaymentTransactionFailed",
+    "MakerPaymentDataSendFailed",
+    "TakerPaymentValidateFailed",
+    "TakerPaymentSpendFailed",
+    "MakerPaymentRefunded",
+    "MakerPaymentRefundFailed"
+  ]
+ignore_events = [
+    "StartFailed",
+    "NegotiateFailed",
+    ]
 
 
-valid_tickers = ["AXE","BAT","BCH","BOTS","BTC","BTCH","CHIPS","COMMOD",
-                "COQUI","CRYPTO","DAI","DASH","DEX","DGB","DOGE","ETH",
-                "HUSH","KMD","KMDICE","LABS","LINK","LTC","MORTY","OOT",
-                "PAX","QTUM","REVS","RVN","RFOX","RICK","SUPERNET","THC",
-                "USDC","TUSD","VRSC","WLC","ZEC","ZEXO","ZILLA"]
+# assuming start from DB/%NODE_PUBKEY%/SWAPS/STATS/ directory
+# TODO TAKER folder?
+def fetch_local_swap_files():
+    files_content = {}
+    files_list_tmp = os.listdir('MAKER')
+    files_list = []
+    for file in files_list_tmp:
+        if file[-5:] == '.json':
+            files_list.append(file)
 
-now = datetime.now()
-timestamp_now = datetime.timestamp(now)
+    # loading files content into files_content dict
+    for file in files_list:
+        try:
+            with open("MAKER/"+file) as json_file:
+                swap_uuid = file[:-5]
+                data = json.load(json_file)
+                files_content[swap_uuid] = data
+        except Exception as e:
+            print(e)
+            print("Broken: " + file)
+    return files_content
 
-@app.route('/', methods=['GET'])
-def home():
-    return "<h1>AtomicDEX Stats</h1><p>Prototype API for AtomicDEX stats</p>"
 
-# optional: pair, dates
-@app.route('/atomicstats/api/v1.0/get_success_rate', methods=['GET'])
-def get_volumes():
-    error_msg = ''
-    maker = 'All'
-    taker = 'All'
-    query_parameters = request.args
-    if "from" in query_parameters:
-        from_timestamp = request.args["from"]
-    else:
-        from_timestamp = '0000000000000'
-    if "to" in query_parameters:
-        to_timestamp = request.args["to"]
-    else:
-        to_timestamp = '9999999999999'
-    if (len(from_timestamp) != 13) or (len(to_timestamp) != 13):
-        error_msg += "Please use miliseconds 13 digits timestamp! "
-    if int(from_timestamp) > int(to_timestamp):
-        error_msg += "From timestamp should be before to timestamp! "
-    if "taker" in query_parameters:
-        taker = request.args["taker"]
-        if taker not in valid_tickers:
-            error_msg += "taker ["+taker+"] is an invalid ticker! Available options are "+str(valid_tickers)+". "
-    if "maker" in query_parameters:
-        maker = request.args["maker"]
-        if maker not in valid_tickers:
-            error_msg += "maker ["+maker+"] is an invalid ticker! Available options are "+str(valid_tickers)+". "
-    swap_data = stats_lib.fetch_local_swap_files()
-    print(len(swap_data))
-    if "gui" in query_parameters:
-        gui_swap_data = stats_lib.gui_filter(swap_data, request.args["gui"])
-        swap_data = gui_swap_data[0]
-        valid_guis = gui_swap_data[1]
-        if request.args["gui"] not in valid_guis:
-            error_msg += "GUI ["+request.args['gui']+"] is invalid! Available options are "+str(valid_guis)+". "
-    if maker != 'All' or taker != 'All':
-        swap_data = stats_lib.pair_filter(swap_data, maker, taker)
-    success_rate = stats_lib.count_successful_swaps(swap_data, int(from_timestamp), int(to_timestamp))
-    if error_msg != '':
-        data = {
-        "result" : "error",
-        "error" : error_msg
-        }
-    else:
-        data = {
-        "result": "success",
-        "maker" : maker,
-        "taker" : taker,
-        "time_now" : int(timestamp_now)*1000,
-        "total": success_rate[1] + success_rate[0],
-        "successful": success_rate[1],
-        "failed": success_rate[0]
+# filter swaps data for speciifc pair
+def pair_filter(data_to_filter, maker_coin, taker_coin):
+    swaps_of_pair = {}
+    for swap_data in data_to_filter.values():
+        try:
+            if taker_coin == 'All':
+                if swap_data["events"][0]["event"]["data"]["maker_coin"] == maker_coin:
+                    swaps_of_pair[swap_data["events"][0]["event"]["data"]["uuid"]] = swap_data
+            elif maker_coin == 'All':
+                if swap_data["events"][0]["event"]["data"]["taker_coin"] == taker_coin:
+                    swaps_of_pair[swap_data["events"][0]["event"]["data"]["uuid"]] = swap_data
+            else:
+                if swap_data["events"][0]["event"]["data"]["taker_coin"] == taker_coin and swap_data["events"][0]["event"]["data"]["maker_coin"] == maker_coin:
+                    swaps_of_pair[swap_data["events"][0]["event"]["data"]["uuid"]] = swap_data
+        except Exception as e:
+            #print(e)
+            pass
+    return swaps_of_pair
 
-        }
-        if from_timestamp != '0000000000000':
-            data.update({"from_timestamp": int(from_timestamp)})
-        if to_timestamp != '9999999999999':
-            data.update({"to_timestamp": int(to_timestamp)})
-        if "gui" in query_parameters:
-            data.update({"gui_filter": request.args['gui']})
-        if success_rate[1]+success_rate[0] > 0:
-            pct = round(success_rate[1]/(success_rate[1]+success_rate[0])*100, 2)
-            data.update({"success_rate": str(pct)+"%"})
-    response = app.response_class(
-        response=json.dumps(data),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
+# filter swaps data for specific gui
+def gui_filter(data_to_filter, gui_type):
+    gui_types = []
+    swaps_of_gui = {}
+    for swap_data in data_to_filter.values():
+        if 'gui' in swap_data:
+            gui = str(swap_data['gui'])
+        else:
+            gui = "Not Specified"
+        if gui not in gui_types:
+            gui_types.append(gui)
+        try:
+            if gui_type == gui:
+                swaps_of_gui[swap_data["events"][0]["event"]["data"]["uuid"]] = swap_data
+        except Exception as e:
+            #print(e)
+            pass
+    return swaps_of_gui, gui_types
 
-@app.route('/atomicstats/api/v1.0/get_fail_data', methods=['GET'])
-def get_fails():
-    error_msg = ''
-    maker = 'All'
-    taker = 'All'
-    query_parameters = request.args
-    if "from" in query_parameters:
-        from_timestamp = request.args["from"]
-    else:
-        from_timestamp = '0000000000000'
-    if "to" in query_parameters:
-        to_timestamp = request.args["to"]
-    else:
-        to_timestamp = '9999999999999'
-    if (len(from_timestamp) != 13) or (len(to_timestamp) != 13):
-        error_msg += "Please use miliseconds 13 digits timestamp! "
-    if int(from_timestamp) > int(to_timestamp):
-        error_msg += "From timestamp should be before to timestamp! "
-    if "taker" in query_parameters:
-        taker = request.args["taker"]
-        if taker not in valid_tickers:
-            error_msg += "taker ["+taker+"] is an invalid ticker! Available options are "+str(valid_tickers)+". "
-    if "maker" in query_parameters:
-        maker = request.args["maker"]
-        if maker not in valid_tickers:
-            error_msg += "maker ["+maker+"] is an invalid ticker! Available options are "+str(valid_tickers)+". "
-    swap_data = stats_lib.fetch_local_swap_files()
-    if "gui" in query_parameters:
-        gui_swap_data = stats_lib.gui_filter(swap_data, request.args["gui"])
-        swap_data = gui_swap_data[0]
-        valid_guis = gui_swap_data[1]
-        if request.args["gui"] not in valid_guis:
-            error_msg += "GUI ["+request.args['gui']+"] is invalid! Available options are "+str(valid_guis)+". "
-    if maker != 'All' or taker != 'All':
-        swap_data = stats_lib.pair_filter(swap_data, maker, taker)
-    success_rate = stats_lib.count_successful_swaps(swap_data, int(from_timestamp), int(to_timestamp))
-    data = {
-    "result": "success",
-    "fail_events": success_rate[2],
-    "fail_info": success_rate[3]
-    }
-    response = app.response_class(
-        response=json.dumps(data),
-        status=200,
-        mimetype='application/json'
-    )
-    return response
 
-# optional: pair, dates
-# @app.route('/atomicstats/api/v1.0/get_volumes', methods=['GET'])
+# filter for time period
+def time_filter(data_to_filter, start_time_stamp, end_time_stamp):
+    swaps_for_dates = {}
+    for swap_data in data_to_filter.values():
+        try:
+            if swap_data["events"][0]["timestamp"] >= start_time_stamp and swap_data["events"][0]["timestamp"] <= end_time_stamp:
+                swaps_for_dates[swap_data["events"][0]["event"]["data"]["uuid"]] = swap_data
+        except Exception as e:
+            pass
+    return swaps_for_dates
 
-if __name__ == '__main__':
-#    app.run(host= '127.0.0.1', debug=True)
-    app.run(host= '0.0.0.0', debug=True)
+
+
+ignored_addresses = ['RDbAXLCmQ2EN7daEZZp7CC9xzkcN8DfAZd', '']
+
+# checking if swap succesfull
+def count_successful_swaps(swaps_data, from_timestamp=0, to_timestamp=999999999999999):
+    failed_events_data = {}
+    gui_types = {}
+    gui_types['Not Specified'] = {}
+    gui_types['Not Specified']['failed'] = 0
+    gui_types['Not Specified']['successful'] = 0
+    successful_swaps_counter = 0
+    failed_swaps_counter = 0
+    taker_addresses = {}
+    for swap_data in swaps_data.values():
+        if 'gui' in swap_data:
+            gui_type = str(swap_data['gui'])
+        else:
+            gui_type = "Not Specified"
+        if gui_type not in gui_types:
+            gui_types[gui_type] = {}
+            gui_types[gui_type]['failed'] = 0
+            gui_types[gui_type]['successful'] = 0
+        failed = False
+        ignore_swap = False
+        taker_addr = ''
+        swap_time_include = True
+        for event in swap_data["events"]:
+            if event['event']['type'] in ignore_events:
+                ignore_swap = True
+        if not ignore_swap:
+            for event in swap_data["events"]:
+                if event['event']['type'] == 'Started':
+                    if event['timestamp'] < from_timestamp or event['timestamp'] > to_timestamp:
+                        swap_time_include = False
+                        break
+                    taker_pub = event['event']['data']['taker']
+                    taker_addr = get_radd_from_pub(taker_pub)
+                    if taker_addr in ignored_addresses:
+                        break
+                    if taker_addr not in taker_addresses:
+                        taker_addresses[taker_addr] = {}
+                        taker_addresses[taker_addr]['failed'] = 0
+                        taker_addresses[taker_addr]['successful'] = 0
+                        taker_addresses[taker_addr]['last_swap'] = event['timestamp']
+                    elif taker_addresses[taker_addr]['last_swap'] < event['timestamp']:
+                        taker_addresses[taker_addr]['last_swap'] = event['timestamp']
+                if event["event"]["type"] in error_events:
+                    failed = True
+                    failed_events_data[swap_data["uuid"]] = {}
+                    failed_events_data[swap_data["uuid"]]["date"] = event["timestamp"]
+                    try:
+                        failed_events_data[swap_data["uuid"]]["taker_coin"] = swap_data["events"][0]["event"]["data"]["taker_coin"]
+                        failed_events_data[swap_data["uuid"]]["maker_coin"] = swap_data["events"][0]["event"]["data"]["maker_coin"]
+                    except Exception as e:
+                        failed_events_data[swap_data["uuid"]]["taker_coin"] = "N/A"
+                        failed_events_data[swap_data["uuid"]]["make_coin"] = "N/A"
+                    finally:
+                        failed_events_data[swap_data["uuid"]]["maker_fail_event_type"] = event["event"]["type"]
+                        failed_events_data[swap_data["uuid"]]["maker_error"] = event["event"]["data"]["error"]
+                    break
+            if failed:
+                gui_types[gui_type]['failed'] += 1
+            else:
+                gui_types[gui_type]['successful'] += 1
+            if taker_addr not in ignored_addresses:
+                if swap_time_include:
+                    if failed:
+                        taker_addresses[taker_addr]['failed'] += 1
+                        failed_swaps_counter += 1
+                    else:
+                        successful_swaps_counter += 1
+                        taker_addresses[taker_addr]['successful'] += 1
+    for taker_addr in taker_addresses:
+        taker_addresses[taker_addr]['total'] = taker_addresses[taker_addr]['failed'] + taker_addresses[taker_addr]['successful']
+    return [failed_swaps_counter, successful_swaps_counter, failed_events_data, taker_addresses, gui_types]
+
+
+# calculate volumes, assumes filtered data for pair
+def calculate_trades_volumes(swaps_data):
+    maker_coin_volume = 0
+    taker_coin_volume = 0
+    for swap_data in swaps_data.values():
+        try:
+            maker_coin_volume += float(swap_data["events"][0]["event"]["data"]["maker_amount"])
+            taker_coin_volume += float(swap_data["events"][0]["event"]["data"]["taker_amount"])
+        except Exception as e:
+            print(swap_data["events"][0])
+            print(e)
+    return (maker_coin_volume, taker_coin_volume)

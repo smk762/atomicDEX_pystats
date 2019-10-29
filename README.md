@@ -1,39 +1,46 @@
-API for seed node jsons parser (WIP!)
+API for seed node jsons parser
 
-Setup: Must set stats DB data folder in stats_lib.py   
-e.g. "/home/username/mm2/DB/node_pubkey/SWAPS/STATS/"
-
+WIP!
 
 Calls:
 
-1) get swaps success rate
+1) Get swaps success rate
 
 `/atomicstats/api/v1.0/get_success_rate`
 
-returns success rate for all files on seed node
+Returns success rate for all files on seed node
 
-optional args:
+2) Get failed swaps info
 
-`pair` - in format TICKER_TICKER (e.g. KMD_BTC) filter data for ticker
-`from` - 13 digits timestamp (miliseconds epoch)
-`to` - 13 digits timestamp (miliseconds epoch)
-
- these args possible to combine, e.g. `/atomicstats/api/v1.0/get_success_rate?pair=BTC_KMD&from=1564658276000&to=156690467900`
-
-2) get swaps volume (wip)
-
-`/atomicstats/api/v1.0/get_volumes`
-
-3) Get failed swaps info
 
 `/atomicstats/api/v1.0/get_fail_data`
 
 Outputs fail events info for all swaps on seed node. Include counts for each fail event type, and uuid, timestamp, trade pair and error message for failing swaps.
 
-optional args:
+Optional args:
 
-`pair` - in format TICKER_TICKER (e.g. KMD_BTC) filter data for ticker
-`from` - 13 digits timestamp (miliseconds epoch)
-`to` - 13 digits timestamp (miliseconds epoch)
+`maker` - TICKER of coin traded from maker  
+`taker` - TICKER of coin traded to taker  
+`from` - 13 digits timestamp (miliseconds epoch)  
+`to` - 13 digits timestamp (miliseconds epoch)  
+`gui` - filters results based on GUI used by maker (if set in maker's MM2.json). 
 
- these args possible to combine, e.g. `/atomicstats/api/v1.0/get_fail_data?pair=BTC_KMD&from=1564658276000&to=156690467900`
+Examples:  
+
+`/atomicstats/api/v1.0/get_success_rate?from=1564658276000`  
+`/atomicstats/api/v1.0/get_success_rate?to=156690467900`  
+`/atomicstats/api/v1.0/get_success_rate?maker=LABS`  
+`/atomicstats/api/v1.0/get_success_rate?taker=KMD`  
+`/atomicstats/api/v1.0/get_success_rate?gui=atomicDEX 0.2.5 Android`  
+
+These args can be combined:   
+
+`/atomicstats/api/v1.0/get_success_rate?gui=atomicDEX 0.2.5 Android&maker=LABS&taker=KMD&from=1564658276000&to=156690467900`
+
+TODO
+
+- filter by address / pubkey
+
+- get swaps volume (wip)
+
+`/atomicstats/api/v1.0/get_volumes`

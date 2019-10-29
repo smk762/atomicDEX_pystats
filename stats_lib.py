@@ -204,4 +204,3 @@ def calculate_trades_volumes(swaps_data):
             print(swap_data["events"][0])
             print(e)
     return (maker_coin_volume, taker_coin_volume)
-

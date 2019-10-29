@@ -57,7 +57,7 @@ def get_volumes():
         valid_guis = gui_swap_data[1]
         if request.args["gui"] not in valid_guis:
             error_msg += "GUI ["+request.args['gui']+"] is invalid! Available options are "+str(valid_guis)+". "
-    if maker != 'All' and taker != 'All':
+    if maker != 'All' or taker != 'All':
         swap_data = stats_lib.pair_filter(swap_data, maker, taker)
     print(len(swap_data))          
     success_rate = stats_lib.count_successful_swaps(swap_data, int(from_timestamp), int(to_timestamp))

@@ -208,7 +208,11 @@ if success_rates[0]+success_rates[1] != 0:
     for gui in gui_data:
         print("GUI ["+gui+"] successful: " + str(gui_data[gui]['successful']))
         print("GUI ["+gui+"] failed: " + str(gui_data[gui]['failed']))
-        rate = round(gui_data[gui]['successful']/(gui_data[gui]['successful']+gui_data[gui]['failed']),1)
-        print("GUI ["+gui+"] rate: " + str(rate*100)+"%\n")
+        total = gui_data[gui]['successful']+gui_data[gui]['failed']
+        if total == 0:
+            rate = "N/A"
+        else:
+            rate = str(round(gui_data[gui]['successful']/(total),1)*100)+"%"
+        print("GUI ["+gui+"] rate: " + rate+"\n")
 else:
     print(colorize("\nNo swap data for specified time range ["+start_time_str+" to "+end_time_str+"]!", 'red'))

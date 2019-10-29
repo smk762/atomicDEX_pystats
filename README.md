@@ -8,15 +8,18 @@ Calls:
 
 `/atomicstats/api/v1.0/get_success_rate`
 
-returns success rate for all files on seed node
+Returns success rate for all files on seed node
 
-optional args:
+Optional args:
 
-`pair` - in format TICKER_TICKER (e.g. KMD_BTC) filter data for ticker
-`from` - 13 digits timestamp (miliseconds epoch)
-`to` - 13 digits timestamp (miliseconds epoch)
+`maker` - TICKER of coin traded from maker  
+`taker` - TICKER of coin traded to taker  
+`from` - 13 digits timestamp (miliseconds epoch)  
+`to` - 13 digits timestamp (miliseconds epoch)  
+`gui` - filters results based on GUI used by maker (if set in maker's MM2.json). 
 
- these args possible to combine, e.g. `/atomicstats/api/v1.0/get_success_rate?pair=BTC_KMD&from=1564658276000&to=156690467900`
+Examples:
+these args possible to combine, e.g. `/atomicstats/api/v1.0/get_success_rate?pair=BTC_KMD&from=1564658276000&to=156690467900`
 
 
 2) get swaps volume (wip)

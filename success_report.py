@@ -49,20 +49,6 @@ smk_addresses = ['R9ViegsR8qrthx81NJdANfnkLoQxomzHAM', 'RDvm5qF3FaBuHe4oT1gwyC25
                  'R9LzCsxtWZvp6fhuTEtS9sRLpCFmv7cqjC']
 known_addr = [{"Oszy":["RW5LqPVTNk2V94xL9j5485TEpQEqjNotyq"]}]
 
-def get_ts(interrogative):
-    start_date = input(interrogative+" [format: DD/MM/YYYY]: ")
-    try:
-        date_list = start_date.split('/')
-        day = int(date_list[0])
-        month = int(date_list[1])
-        year = int(date_list[2])
-        this_time = datetime(year, month, day, 0, 0, tzinfo=timezone.utc)
-        this_timestamp = datetime.timestamp(this_time)*1000
-        return this_timestamp
-    except:
-        print("Incorrect format! Try again...")
-        pass
-
 while True:
     specify_time = input("Specify time range? [y/n]: ")
     if specify_time == 'y' or specify_time == 'Y':
@@ -73,13 +59,31 @@ while True:
         break
     else:
         print("Please enter [Y/y] or [N/n] only!")
+    if specify_time:
+        while True:
+            time_format = input("[D]ates or [T]imestamps?: ")
+            if time_format == 'd' or time_format == 'D':
+                human_time = True
+                break
+            elif time_format == 't' or time_format == 'T':
+                human_time = False
+                break
+            else:
+                print("Please enter [D/d] or [T/t] only!")
 if specify_time:
-    start_timestamp = get_ts("Enter Start date")
-    start_time_str = datetime.utcfromtimestamp(start_timestamp/1000).strftime('%d-%m-%Y')
-    end_timestamp = get_ts("Enter End date")
-    while end_timestamp < start_timestamp:
-        print(colorize("Time does not flow backwards... yet. Please input an end date which is after "+start_time_str+"!", 'red'))
-        end_timestamp = get_ts("Enter End date")
+    if human_time:
+        start_timestamp = statslib.get_ts("Enter Start date")
+        start_time_str = datetime.utcfromtimestamp(start_timestamp/1000).strftime('%d-%m-%Y')
+        end_timestamp = statslib.get_ts("Enter End date")
+        while end_timestamp < start_timestamp:
+            print(colorize("Time does not flow backwards... yet. Please input an end date which is after "+start_time_str+"!", 'red'))
+            end_timestamp = statslib.get_ts("Enter End date")
+    else:
+        start_timestamp = statslib.get_ts("Enter Start timestamp")
+        end_timestamp = statslib.get_ts("Enter End timestamp")
+        while end_timestamp < start_timestamp:
+            print(colorize("Time does not flow backwards... yet. Please input an end timestamp which is after "+str(start_timestamp)+"!", 'red'))
+            end_timestamp = statslib.get_ts("Enter End date")
 else:
     start_timestamp = 0
     end_timestamp = int(timestamp_now)*1000
@@ -137,8 +141,8 @@ for address in sorted_taker_address_keys:
         num_failed = taker_addresses[address]['failed']
         num_success = taker_addresses[address]['successful']
         total = taker_addresses[address]['total']
-        last_swap = datetime.utcfromtimestamp(taker_addresses[address]['last_swap']/1000).strftime('%d-%m-%Y %H:%M:%S')
-        perc = num_success/total*100
+        last_swap = taker_addresses[address]['last_swap']
+        perc = taker_addresses[address]['percentage']
         if perc > 95:
             perc = colorize('{:^10}'.format(str(perc)[:6]+"%"), 'green')
             address_str = colorize('{:^76}'.format(str(address_str)), 'green')

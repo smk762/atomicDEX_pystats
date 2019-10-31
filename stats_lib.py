@@ -5,6 +5,16 @@ import bitcoin
 from bitcoin.wallet import P2PKHBitcoinAddress
 from bitcoin.core import x
 from bitcoin.core import CoreMainParams
+from datetime import datetime, timezone
+from os import listdir
+from os.path import isfile, join
+
+jsonfiles = [f for f in listdir('/var/www/html/json') if isfile(join('/var/www/html/json', f))]
+pairs = []
+for file in jsonfiles:
+    pair = file.split('--')[0]
+    pairs.append(pair)
+
 
 class CoinParams(CoreMainParams):
     MESSAGE_START = b'\x24\xe9\x27\x64'
@@ -17,8 +27,15 @@ bitcoin.params = CoinParams
 def get_radd_from_pub(pub):
     try:
         taker_addr = str(P2PKHBitcoinAddress.from_pubkey(x("02"+pub)))
-    except:
-        taker_addr = pub
+    except Exception as e:
+        print(e)
+        try:
+            taker_addr = str(P2PKHBitcoinAddress.from_pubkey(x("03"+pub)))
+        except Exception as e:
+            print(e)
+            taker_addr = pub
+            pass
+        pass
     return str(taker_addr)
 
 error_events = [
@@ -38,6 +55,77 @@ ignore_events = [
     "NegotiateFailed",
     ]
 
+ignored_addresses = ['RDbAXLCmQ2EN7daEZZp7CC9xzkcN8DfAZd', '']
+
+valid_tickers = ["AXE","BAT","BCH","BOTS","BTC","BTCH","CHIPS","COMMOD",
+                "COQUI","CRYPTO","DAI","DASH","DEX","DGB","DOGE","ETH",
+                "HUSH","KMD","KMDICE","LABS","LINK","LTC","MORTY","OOT",
+                "PAX","QTUM","REVS","RVN","RFOX","RICK","SUPERNET","THC",
+                "USDC","TUSD","VRSC","WLC","ZEC","ZEXO","ZILLA"]
+
+address_owners = { "Oszy":['RPDDNXqCgeMti6FDtjybSUVyDHssHTtp1y'],
+                    "Oszy_REDACT":['RYKwUXd9mrJYM8QamczVcqASLW51iAFhMe'],
+                    "smk762":['R9ViegsR8qrthx81NJdANfnkLoQxomzHAM'],
+                    "Jimm B":['RSnaRcQaraqbJUEmT34cp58759J8b83L4s'],
+                    "Artist":['RMoohFnZ4ZwbZ1crR5aVkqsJ3pE5D5Apjq'],
+                    "ubiq":['RHR5tZP36bUHNMyfqrQdHfRzoDitH2xrdQ'],
+                    "kmdkrazy":['RVvevFimTvz18G58GWTBFmhCfU3zQW1rhQ'],
+                    "Buralux":['RCPys8hvEfFSDkMZL7GtYA8a5GSwih67Q1'],
+                    "ciumete":['RCBheTft7W19VQ28wXpY5EdwnaA8zfpbCV']
+                    
+            }
+
+known_addresses = []
+for owner in address_owners:
+    known_addresses += address_owners[owner]
+
+
+def get_modified_time(file):
+    return os.path.getmtime(file)
+
+def write_json(path, filename, data):
+    name = filename.split('.')[0]
+    jsonfile1 = path+"/"+name+".json"
+    jsonfile2 = path+"/"+name+"2.json"
+    if not os.path.exists(jsonfile1):
+        with open(jsonfile1, "w+") as f:
+            f.write('')
+    if not os.path.exists(jsonfile2):
+        with open(jsonfile2, "w+") as f:
+            f.write('')
+    if get_modified_time(jsonfile1) < get_modified_time(jsonfile2):
+        jsonfile = jsonfile1
+    else:
+        jsonfile = jsonfile2
+    with open(jsonfile, "w+") as f:
+        print("Writing "+jsonfile)
+        f.write(json.dumps(data))
+
+def get_radd_from_pub(pub):
+    try:
+        taker_addr = str(P2PKHBitcoinAddress.from_pubkey(x("02"+pub)))
+    except:
+        try:
+            taker_addr = str(P2PKHBitcoinAddress.from_pubkey(x("03"+pub)))
+        except:
+            pass
+        taker_addr = pub
+        pass
+    return str(taker_addr)
+
+def get_ts(interrogative):
+    start_date = input(interrogative+" [format: DD/MM/YYYY]: ")
+    try:
+        date_list = start_date.split('/')
+        day = int(date_list[0])
+        month = int(date_list[1])
+        year = int(date_list[2])
+        this_time = datetime(year, month, day, 0, 0, tzinfo=timezone.utc)
+        this_timestamp = datetime.timestamp(this_time)*1000
+        return this_timestamp
+    except:
+        print("Incorrect format! Try again...")
+        pass
 
 # assuming start from DB/%NODE_PUBKEY%/SWAPS/STATS/ directory
 def fetch_local_swap_files():
@@ -82,15 +170,12 @@ def pair_filter(data_to_filter, maker_coin, taker_coin):
 
 # filter swaps data for specific gui
 def gui_filter(data_to_filter, gui_type):
-    gui_types = []
     swaps_of_gui = {}
     for swap_data in data_to_filter.values():
         if 'gui' in swap_data:
             gui = str(swap_data['gui'])
         else:
             gui = "Not Specified"
-        if gui not in gui_types:
-            gui_types.append(gui)
         try:
             if gui_type == gui:
                 #if gui != 'pytomicDEX' and gui != 'MM2GUI':
@@ -98,7 +183,7 @@ def gui_filter(data_to_filter, gui_type):
         except Exception as e:
             #print(e)
             pass
-    return swaps_of_gui, gui_types
+    return swaps_of_gui
 
 
 # filter for time period
@@ -111,10 +196,6 @@ def time_filter(data_to_filter, start_time_stamp, end_time_stamp):
         except Exception as e:
             pass
     return swaps_for_dates
-
-
-
-ignored_addresses = ['RDbAXLCmQ2EN7daEZZp7CC9xzkcN8DfAZd', '']
 
 # checking if swap succesfull
 def count_successful_swaps(swaps_data, from_timestamp=0, to_timestamp=999999999999999):
@@ -153,10 +234,28 @@ def count_successful_swaps(swaps_data, from_timestamp=0, to_timestamp=9999999999
                     if taker_addr in ignored_addresses:
                         break
                     if taker_addr not in taker_addresses:
-                        taker_addresses[taker_addr] = {}
-                        taker_addresses[taker_addr]['failed'] = 0
-                        taker_addresses[taker_addr]['successful'] = 0
-                        taker_addresses[taker_addr]['last_swap'] = event['timestamp']
+                        if taker_addr in known_addresses:
+                            for owner in address_owners:
+                                if taker_addr in address_owners[owner]:
+                                    if owner.find('_REDACT') > 0:
+                                        taker_addr = owner+"_***REDACTED***"
+                                        taker_addresses[taker_addr] = {}
+                                        taker_addresses[taker_addr]['failed'] = 0
+                                        taker_addresses[taker_addr]['successful'] = 0
+                                        taker_addresses[taker_addr]['last_swap'] = event['timestamp']
+                                        taker_addresses[taker_addr]['owner'] = owner.replace("_REDACT", "")
+                                    else:
+                                        taker_addresses[taker_addr] = {}
+                                        taker_addresses[taker_addr]['failed'] = 0
+                                        taker_addresses[taker_addr]['successful'] = 0
+                                        taker_addresses[taker_addr]['last_swap'] = event['timestamp']
+                                        taker_addresses[taker_addr]['owner'] = owner
+                        else:
+                            taker_addresses[taker_addr] = {}
+                            taker_addresses[taker_addr]['failed'] = 0
+                            taker_addresses[taker_addr]['successful'] = 0
+                            taker_addresses[taker_addr]['last_swap'] = event['timestamp']
+                            taker_addresses[taker_addr]['owner'] = 'unknown'
                     elif taker_addresses[taker_addr]['last_swap'] < event['timestamp']:
                         taker_addresses[taker_addr]['last_swap'] = event['timestamp']
                 if event["event"]["type"] in error_events:
@@ -187,6 +286,10 @@ def count_successful_swaps(swaps_data, from_timestamp=0, to_timestamp=9999999999
                         taker_addresses[taker_addr]['successful'] += 1
     for taker_addr in taker_addresses:
         taker_addresses[taker_addr]['total'] = taker_addresses[taker_addr]['failed'] + taker_addresses[taker_addr]['successful']
+        if taker_addresses[taker_addr]['total'] > 0:
+            taker_addresses[taker_addr]['percentage'] = taker_addresses[taker_addr]['successful']/taker_addresses[taker_addr]['total']*100
+        else:
+            taker_addresses[taker_addr]['percentage'] = 'N/A'
     return [failed_swaps_counter, successful_swaps_counter, failed_events_data, taker_addresses, gui_types]
 
 
@@ -202,3 +305,17 @@ def calculate_trades_volumes(swaps_data):
             print(swap_data["events"][0])
             print(e)
     return (maker_coin_volume, taker_coin_volume)
+
+
+swaps_data = fetch_local_swap_files()
+def get_valid_guis(swaps_data):
+    valid_guis = []
+    for swap_data in swaps_data.values():
+        if 'gui' in swap_data:
+            gui_type = str(swap_data['gui'])
+        else:
+            gui_type = "Not Specified"
+        if gui_type not in valid_guis:
+            valid_guis.append(gui_type)
+    return valid_guis
+valid_guis = get_valid_guis(swaps_data)

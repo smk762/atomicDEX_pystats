@@ -198,12 +198,16 @@ def taker_gui_filter(swaps_summary, taker_gui):
     return filtered_swaps_summary
 
 # by timestamp range
-def time_filter(swaps_summary, from_timestamp, to_timestamp):
+def time_filter(swaps_summary, from_timestamp, to_timestamp, exclude=False):
     filtered_swaps_summary = {}
     for uuid in swaps_summary:
-        swap_finish_time = int(swaps_summary[uuid]['swap_finish_time'])
+        swap_finish_time = swaps_summary[uuid]['swap_finish_time']
         if swap_finish_time != "N/A":
-            filtered_swaps_summary.update({uuid:swaps_summary[uuid]})
+            if exclude:
+                if swap_finish_time > to_timestamp and swap_finish_time < from_timestamp:
+                    filtered_swaps_summary.update({uuid:swaps_summary[uuid]})
+            elif swap_finish_time < to_timestamp and swap_finish_time > from_timestamp:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})
     return filtered_swaps_summary
 
 # by address 
@@ -274,25 +278,37 @@ def taker_amount_filter(swaps_summary, taker_amount):
     return filtered_swaps_summary
 
 # by event
-def event_filter(swaps_summary, event):
+def event_filter(swaps_summary, event, exclude=False):
     filtered_swaps_summary = {}
     for uuid in swaps_summary:
-        if swaps_summary[uuid]['maker_result_event'] == event or swaps_summary[uuid]['taker_result_event'] == event:
-            filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        if exclude:
+            if swaps_summary[uuid]['maker_result_event'] != event or swaps_summary[uuid]['taker_result_event'] != event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        else:
+            if swaps_summary[uuid]['maker_result_event'] == event or swaps_summary[uuid]['taker_result_event'] == event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
     return filtered_swaps_summary
 
-def maker_event_filter(swaps_summary, maker_event):
+def maker_event_filter(swaps_summary, maker_event, exclude=False):
     filtered_swaps_summary = {}
     for uuid in swaps_summary:
-        if swaps_summary[uuid]['maker_result_event'] == maker_event:
-            filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        if exclude:
+            if swaps_summary[uuid]['maker_result_event'] != maker_event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})                
+        else:
+            if swaps_summary[uuid]['maker_result_event'] == maker_event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
     return filtered_swaps_summary
 
-def taker_event_filter(swaps_summary, taker_event):
+def taker_event_filter(swaps_summary, taker_event, exclude=False):
     filtered_swaps_summary = {}
     for uuid in swaps_summary:
-        if swaps_summary[uuid]['taker_result_event'] == taker_event:
-            filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        if exclude:
+            if swaps_summary[uuid]['taker_result_event'] != taker_event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        else:
+            if swaps_summary[uuid]['taker_result_event'] == taker_event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
     return filtered_swaps_summary
 
 # by result
@@ -397,7 +413,8 @@ def calculate_total(swaps_summary):
 def get_swap_times_list(swaps_summary):
     swap_times = []
     for uuid in swaps_summary:
-        swap_times.append(swaps_summary[uuid]['swap_finish_time'])
+        if swaps_summary[uuid]['swap_finish_time'] != 'N/A':
+            swap_times.append(swaps_summary[uuid]['swap_finish_time'])
     return swap_times
 
 def get_trade_uuid_list(swaps_summary):
@@ -455,24 +472,24 @@ def address_summary_json(swaps_summary):
 
         maker_swap_times = get_swap_times_list(maker_swaps_summary)
         if len(maker_swap_times) > 0:
-            first_swap_maker = max(maker_swap_times)
-            last_swap_maker = min(maker_swap_times)
+            first_swap_maker = min(maker_swap_times)
+            last_swap_maker = max(maker_swap_times)
         else:
             first_swap_maker = "N/A"
             last_swap_maker = "N/A"
 
-        taker_swap_times = get_swap_times_list(maker_swaps_summary)
-        if len(maker_swap_times) > 0:
-            first_swap_taker = max(taker_swap_times)
-            last_swap_taker = min(taker_swap_times)
+        taker_swap_times = get_swap_times_list(taker_swaps_summary)
+        if len(taker_swap_times) > 0:
+            first_swap_taker = min(taker_swap_times)
+            last_swap_taker = max(taker_swap_times)
         else:
             first_swap_taker = "N/A"
             last_swap_taker = "N/A"
 
-        if len(maker_swap_times) > 0:
-            all_swap_times = maker_swap_times + taker_swap_times
-            first_swap = max(all_swap_times)
-            last_swap = min(all_swap_times)
+        all_swap_times = maker_swap_times + taker_swap_times
+        if len(all_swap_times) > 0:
+            first_swap = min(all_swap_times)
+            last_swap = max(all_swap_times)
         else:
             first_swap = "N/A"
             last_swap = "N/A"

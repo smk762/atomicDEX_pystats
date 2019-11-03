@@ -31,9 +31,9 @@ with open("merged_logs.txt", "r") as f:
                         swap_results = json.loads(swap_json)['result']['swaps']
                         for swap in swap_results: 
                             if swap['type'] == 'Taker':
-                                folder = "MAKER"
-                            elif swap['type'] == 'Maker':
                                 folder = "TAKER"
+                            elif swap['type'] == 'Maker':
+                                folder = "MAKER"
                             uuid = swap['uuid']
                             with open(folder+"/"+uuid+".json", "w") as j:
                                 print("writing "+folder+"/"+uuid+".json")

@@ -274,25 +274,37 @@ def taker_amount_filter(swaps_summary, taker_amount):
     return filtered_swaps_summary
 
 # by event
-def event_filter(swaps_summary, event):
+def event_filter(swaps_summary, event, exclude=False):
     filtered_swaps_summary = {}
     for uuid in swaps_summary:
-        if swaps_summary[uuid]['maker_result_event'] == event or swaps_summary[uuid]['taker_result_event'] == event:
-            filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        if exclude:
+            if swaps_summary[uuid]['maker_result_event'] != event or swaps_summary[uuid]['taker_result_event'] != event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        else:
+            if swaps_summary[uuid]['maker_result_event'] == event or swaps_summary[uuid]['taker_result_event'] == event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
     return filtered_swaps_summary
 
-def maker_event_filter(swaps_summary, maker_event):
+def maker_event_filter(swaps_summary, maker_event, exclude=False):
     filtered_swaps_summary = {}
     for uuid in swaps_summary:
-        if swaps_summary[uuid]['maker_result_event'] == maker_event:
-            filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        if exclude:
+            if swaps_summary[uuid]['maker_result_event'] != maker_event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})                
+        else:
+            if swaps_summary[uuid]['maker_result_event'] == maker_event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
     return filtered_swaps_summary
 
-def taker_event_filter(swaps_summary, taker_event):
+def taker_event_filter(swaps_summary, taker_event, exclude=False):
     filtered_swaps_summary = {}
     for uuid in swaps_summary:
-        if swaps_summary[uuid]['taker_result_event'] == taker_event:
-            filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        if exclude:
+            if swaps_summary[uuid]['taker_result_event'] != taker_event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
+        else:
+            if swaps_summary[uuid]['taker_result_event'] == taker_event:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})    
     return filtered_swaps_summary
 
 # by result

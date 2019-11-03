@@ -456,24 +456,24 @@ def address_summary_json(swaps_summary):
 
         maker_swap_times = get_swap_times_list(maker_swaps_summary)
         if len(maker_swap_times) > 0:
-            first_swap_maker = max(maker_swap_times)
-            last_swap_maker = min(maker_swap_times)
+            first_swap_maker = min(maker_swap_times)
+            last_swap_maker = max(maker_swap_times)
         else:
             first_swap_maker = "N/A"
             last_swap_maker = "N/A"
 
         taker_swap_times = get_swap_times_list(taker_swaps_summary)
         if len(taker_swap_times) > 0:
-            first_swap_taker = max(taker_swap_times)
-            last_swap_taker = min(taker_swap_times)
+            first_swap_taker = min(taker_swap_times)
+            last_swap_taker = max(taker_swap_times)
         else:
             first_swap_taker = "N/A"
             last_swap_taker = "N/A"
 
         all_swap_times = maker_swap_times + taker_swap_times
-        if len(maker_swap_times) > 0:
-            first_swap = max(all_swap_times)
-            last_swap = min(all_swap_times)
+        if len(all_swap_times) > 0:
+            first_swap = min(all_swap_times)
+            last_swap = max(all_swap_times)
         else:
             first_swap = "N/A"
             last_swap = "N/A"

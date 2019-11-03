@@ -198,12 +198,16 @@ def taker_gui_filter(swaps_summary, taker_gui):
     return filtered_swaps_summary
 
 # by timestamp range
-def time_filter(swaps_summary, from_timestamp, to_timestamp):
+def time_filter(swaps_summary, from_timestamp, to_timestamp, exclude=False):
     filtered_swaps_summary = {}
     for uuid in swaps_summary:
         swap_finish_time = swaps_summary[uuid]['swap_finish_time']
         if swap_finish_time != "N/A":
-            filtered_swaps_summary.update({uuid:swaps_summary[uuid]})
+            if exclude:
+                if swap_finish_time > to_timestamp and swap_finish_time < from_timestamp:
+                    filtered_swaps_summary.update({uuid:swaps_summary[uuid]})
+            elif swap_finish_time < to_timestamp and swap_finish_time > from_timestamp:
+                filtered_swaps_summary.update({uuid:swaps_summary[uuid]})
     return filtered_swaps_summary
 
 # by address 

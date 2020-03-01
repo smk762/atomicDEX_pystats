@@ -58,9 +58,28 @@ def def_creds(chain):
     return(Proxy("http://%s:%s@127.0.0.1:%d"%(rpcuser, rpcpassword, int(rpcport))))
 
 
+def get_local_uuids():
+    uuids_list_tmp = os.listdir('SWAPS')
+    uuids_list = []
+    for uuid in uuids_list_tmp:
+        if uuid[-5:] == '.json':
+            uuids_list.append(uuid[:-5])
+    return uuids_list
+
+if not os.path.exists("SWAPS"):
+    os.makedirs("SWAPS")
+
 rpc = def_creds("DEXP2P")
 
-json_data = rpc.DEX_list('""', 0, "swaps")
-print(json_data)
-
-
+uuids = get_local_uuids()
+print(uuids)
+json_data = rpc.DEX_list("", '0', "swaps")
+for swap in json_data['matches']:
+    swap_json = json.loads(swap['payload'])
+    uuid = swap_json['uuid']
+    if uuid not in uuids:
+        print("Adding "+uuid)
+        with open("SWAPS/"+uuid+".json", "w+") as f:
+            json.dump(swap_json, f)
+    else:
+        print("UUID already saved")

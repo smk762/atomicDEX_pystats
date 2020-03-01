@@ -18,6 +18,21 @@ from os.path import expanduser
 cwd = os.getcwd()
 home = expanduser("~")
 
+# TODO: check this is up to date 
+maker_success_events = ['Started', 'Negotiated', 'TakerFeeValidated', 'MakerPaymentSent', 'TakerPaymentReceived', 'TakerPaymentWaitConfirmStarted',
+                        'TakerPaymentValidatedAndConfirmed', 'TakerPaymentSpent', 'Finished']
+
+maker_errors_events = ['StartFailed', 'NegotiateFailed', 'TakerFeeValidateFailed', 'MakerPaymentTransactionFailed', 'MakerPaymentDataSendFailed',
+                      'TakerPaymentValidateFailed', 'TakerPaymentSpendFailed', 'MakerPaymentRefunded', 'MakerPaymentRefundFailed']
+
+taker_success_events = ['Started', 'Negotiated', 'TakerFeeSent', 'MakerPaymentReceived', 'MakerPaymentWaitConfirmStarted',
+                        'MakerPaymentValidatedAndConfirmed', 'TakerPaymentSent', 'TakerPaymentSpent', 'MakerPaymentSpent', 'Finished']
+
+taker_errors_events = ['StartFailed', 'NegotiateFailed', 'TakerFeeSendFailed', 'MakerPaymentValidateFailed', 'TakerPaymentTransactionFailed',
+                      'TakerPaymentDataSendFailed', 'TakerPaymentWaitForSpendFailed', 'MakerPaymentSpendFailed', 'TakerPaymentRefunded',
+                      'TakerPaymentRefundFailed']
+
+
 # Set coin config locations. Not yet tested outside Linux for 3rd party coins!
 operating_system = platform.system()
 if operating_system == 'Darwin':
@@ -58,28 +73,43 @@ def def_creds(chain):
     return(Proxy("http://%s:%s@127.0.0.1:%d"%(rpcuser, rpcpassword, int(rpcport))))
 
 
-def get_local_uuids():
-    uuids_list_tmp = os.listdir('SWAPS')
+def get_local_uuids(role):
+    uuids_list_tmp = os.listdir(role)
     uuids_list = []
     for uuid in uuids_list_tmp:
         if uuid[-5:] == '.json':
             uuids_list.append(uuid[:-5])
     return uuids_list
 
-if not os.path.exists("SWAPS"):
-    os.makedirs("SWAPS")
+folders = ["MAKER","TAKER", "UNKNOWN"]
+for folder in folders:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+def get_role(swap_json):
+    if 'TakerFeeValidated' in swap_json['success_events']:
+        return 'MAKER'        
+    elif 'TakerFeeSent' in swap_json['success_events']:
+        return 'TAKER'
+    else:
+        return 'UNKNOWN'
+
 
 rpc = def_creds("DEXP2P")
 
-uuids = get_local_uuids()
+uuids = {}
+for folder in folders:
+    uuids[folder] = get_local_uuids(folder)
 print(uuids)
 json_data = rpc.DEX_list("", '0', "swaps")
+print(json_data)
 for swap in json_data['matches']:
     swap_json = json.loads(swap['payload'])
     uuid = swap_json['uuid']
-    if uuid not in uuids:
-        print("Adding "+uuid)
-        with open("SWAPS/"+uuid+".json", "w+") as f:
+    role = get_role(swap_json)
+    if uuid not in uuids[role]:
+        print("Adding ["+uuid+"] ["+role+"]")
+        with open(role+"/"+uuid+".json", "w+") as f:
             json.dump(swap_json, f)
     else:
-        print("UUID already saved")
+        print("["+role+"] ["+uuid+"] already saved")

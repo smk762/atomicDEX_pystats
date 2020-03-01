@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import flask
 from flask import json, request
-import stats_lib
+from lib import stats_lib
 from datetime import datetime, timezone
 
 app = flask.Flask(__name__)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import stats_lib
+from lib import stats_lib
 import requests
 from datetime import datetime, timezone
 

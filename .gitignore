@@ -1,4 +1,8 @@
 SWAPS/
+TAKER/
+MAKER/
+UNKNOWN/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

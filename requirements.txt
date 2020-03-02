@@ -2,4 +2,8 @@ setuptools
 wheel
 slick-bitcoinrpc
 requests
-#pycurl==7.43.0.5
+mysql-connector
+python-dotenv
+fastapi==0.44.1
+uvicorn
+python-bitcoinlib

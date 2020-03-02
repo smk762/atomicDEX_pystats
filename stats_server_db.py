@@ -30,11 +30,21 @@ async def home():
         "message": "Welcome to AtomicDEX Stats Prototype API for AtomicDEX stats v0.0.3. See /docs for all methods"
     }
 
-@app.get('/atomicstats/api/fail_count')
-async def fail_count(taker_coin: str=None, maker_coin: str=None, mins_since: int=None):
+@app.get('/atomicstats/api/fail_swaps')
+async def fail_swaps(taker_coin: str=None, maker_coin: str=None, mins_since: int=None):
     resp = dblib.get_failed(maker_coin, taker_coin, mins_since)
     return {
         "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/success_swaps')
+async def success_swaps(taker_coin: str=None, maker_coin: str=None, mins_since: int=None):
+    resp = dblib.get_success(maker_coin, taker_coin, mins_since)
+    return {
+        "result":"success",
+        "count":len(resp),
         "message": resp
     }
 

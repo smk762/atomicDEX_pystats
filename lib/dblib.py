@@ -48,21 +48,34 @@ def update_local_db(days_since=1):
         except Exception as e:
             print(e)
 
+update_local_db()
+
 def count_rows(db, col='UUID', days_since=1):
     sql = "SELECT COUNT("+col+") FROM "+db+" WHERE started_at >= now() - INTERVAL "+str(days_since)+" DAY ORDER BY started_at;"
     ext_cursor.execute(sql)
     ext_result = ext_cursor.fetchone()
-    print(ext_result)
     return ext_result
 
-success = count_rows('swaps', 'UUID', 1)
-failed = count_rows('swaps_failed', 'UUID', 1)
-
-print("SUCCESS: "+str(success[0]))
-print("FAILED: "+str(failed[0]))
-
 def get_failed(maker_coin, taker_coin, mins_since):
-    sql = "SELECT * FROM swaps_failed"
+    json_obj = "JSON_OBJECT( \
+        'uuid', uuid, \
+        'started_at', started_at, \
+        'taker_coin', taker_coin, \
+        'taker_amount', taker_amount, \
+        'taker_error_type', taker_error_type, \
+        'taker_error_msg', taker_error_msg, \
+        'taker_gui', taker_gui, \
+        'taker_version', taker_version, \
+        'taker_pubkey', taker_pubkey, \
+        'maker_coin', maker_coin, \
+        'maker_amount', maker_amount, \
+        'maker_error_type', maker_error_type, \
+        'maker_error_msg', maker_error_msg, \
+        'maker_gui', maker_gui, \
+        'maker_version', maker_version, \
+        'maker_pubkey', maker_pubkey \
+        )"
+    sql = "SELECT "+json_obj+" FROM swaps_failed"
     conditions = [] 
     if taker_coin:
         conditions.append("taker_coin = '"+taker_coin+"'")
@@ -75,12 +88,25 @@ def get_failed(maker_coin, taker_coin, mins_since):
         sql += condition
     ext_cursor.execute(sql)
     ext_result = ext_cursor.fetchall()
-    print(ext_result)
     return ext_result
 
 
 def get_success(maker_coin, taker_coin, mins_since):
-    sql = "SELECT * FROM swaps"
+    json_obj = "JSON_OBJECT( \
+        'uuid', uuid, \
+        'started_at', started_at, \
+        'taker_coin', taker_coin, \
+        'taker_amount', taker_amount, \
+        'taker_gui', taker_gui, \
+        'taker_version', taker_version, \
+        'taker_pubkey', taker_pubkey, \
+        'maker_coin', maker_coin, \
+        'maker_amount', maker_amount, \
+        'maker_gui', maker_gui, \
+        'maker_version', maker_version, \
+        'maker_pubkey', maker_pubkey \
+        )"
+    sql = "SELECT "+json_obj+" FROM swaps"
     conditions = []
     if taker_coin:
         conditions.append("taker_coin = '"+taker_coin+"'")
@@ -93,5 +119,4 @@ def get_success(maker_coin, taker_coin, mins_since):
         sql += condition
     ext_cursor.execute(sql)
     ext_result = ext_cursor.fetchall()
-    print(ext_result)
     return ext_result

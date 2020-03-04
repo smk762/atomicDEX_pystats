@@ -31,8 +31,11 @@ async def home():
     }
 
 @app.get('/atomicstats/api/fail_swaps')
-async def fail_swaps(taker_coin: str=None, maker_coin: str=None, mins_since: int=None):
-    resp = dblib.get_failed(maker_coin, taker_coin, mins_since)
+async def fail_swaps(taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     taker_error_type: str=None, maker_error_type: str=None,mins_since: int=None):
+    resp = dblib.get_failed(maker_coin, taker_coin, maker_gui, taker_gui, taker_error_type, maker_error_type, 
+                            maker_version, taker_version, maker_pubkey, taker_pubkey, mins_since)
     return {
         "result":"success",
         "count":len(resp),
@@ -40,8 +43,83 @@ async def fail_swaps(taker_coin: str=None, maker_coin: str=None, mins_since: int
     }
 
 @app.get('/atomicstats/api/success_swaps')
-async def success_swaps(taker_coin: str=None, maker_coin: str=None, mins_since: int=None):
-    resp = dblib.get_success(maker_coin, taker_coin, mins_since)
+async def success_swaps(taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     mins_since: int=None):
+    resp = dblib.get_success(maker_coin, taker_coin, maker_gui, taker_gui, maker_version, taker_version,
+                             maker_pubkey, taker_pubkey, mins_since)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/fail_swaps_count')
+async def fail_swaps(group_by, taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     taker_error_type: str=None, maker_error_type: str=None,mins_since: int=None):
+    resp = dblib.get_failed_count(group_by, maker_coin, taker_coin, maker_gui, taker_gui, taker_error_type, maker_error_type, 
+                            maker_version, taker_version, maker_pubkey, taker_pubkey, mins_since)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/success_swaps_count')
+async def success_swaps(group_by, taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     mins_since: int=None):
+    resp = dblib.get_success_count(group_by, maker_coin, taker_coin, maker_gui, taker_gui, maker_version, taker_version,
+                             maker_pubkey, taker_pubkey, mins_since)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/taker_volume')
+async def taker_volume(taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     mins_since: int=None):
+    resp = dblib.get_taker_volume(maker_coin, taker_coin, maker_gui, taker_gui, maker_version, taker_version,
+                             maker_pubkey, taker_pubkey, mins_since)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/maker_volume')
+async def maker_volume(taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     mins_since: int=None):
+    resp = dblib.get_maker_volume(maker_coin, taker_coin, maker_gui, taker_gui, maker_version, taker_version,
+                             maker_pubkey, taker_pubkey, mins_since)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/mean_taker_price_KMD')
+async def mean_taker_price_KMD(taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     mins_since: int=None):
+    resp = dblib.get_mean_taker_price_KMD(maker_gui, taker_gui, maker_version, taker_version,
+                             maker_pubkey, taker_pubkey, mins_since)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/mean_maker_price_KMD')
+async def mean_taker_price_KMD(taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     mins_since: int=None):
+    resp = dblib.get_mean_maker_price_KMD(maker_gui, taker_gui, maker_version, taker_version,
+                             maker_pubkey, taker_pubkey, mins_since)
     return {
         "result":"success",
         "count":len(resp),
@@ -163,7 +241,6 @@ async def get_fails():
     )
     return response
 
-
 @app.get('/atomicstats/api/v1.0/get_takers')
 async def get_takers():
     print("get_takers")
@@ -234,6 +311,24 @@ async def get_takers():
         mimetype='application/json'
     )
     return response
+
+@app.get('/atomicstats/api/v1.0/get_unique_values/{table}/{column}')
+async def get_unique(table, column, since=None):
+    resp = dblib.get_unique_values(table, column, since)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/v1.0/get_unique_filter_values')
+async def get_unique_filter_values(table):
+    resp = dblib.get_unique_filter_values(table)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
 
 # optional: pair, dates
 # @app.route('/atomicstats/api/v1.0/get_volumes', methods=['GET'])

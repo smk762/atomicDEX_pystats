@@ -5,6 +5,7 @@ import mysql.connector
 from dotenv import load_dotenv
 import logging
 import logging.handlers
+import json
 
 logger = logging.getLogger()
 handler = logging.StreamHandler()
@@ -14,7 +15,6 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 load_dotenv()
-
 ext_mydb = mysql.connector.connect(
   host=os.getenv("ext_hostname"),
   user=os.getenv("ext_username"),
@@ -35,6 +35,8 @@ global unique_success_vals
 global unique_fail_vals
 unique_success_vals = {}
 unique_fail_vals = {}
+
+
 def update_local_db(days_since=1):
     print("Importing swaps")
     new_success = 0
@@ -78,10 +80,11 @@ def get_unique_filter_values(table):
 
 
 def get_unique_values(table='swaps', col='taker_coin', mins_since=None):
+    
     val_list = []
     sql = "SELECT DISTINCT "+col+" FROM "+table
     conditions = []
-    conditions.append(col+" IS NOT NULL")
+    #conditions.append(col+" IS NOT NULL")
     if mins_since:
         conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
     if len(conditions) > 0:
@@ -94,6 +97,7 @@ def get_unique_values(table='swaps', col='taker_coin', mins_since=None):
     return val_list
 
 def count_rows(table='swaps', col='UUID', mins_since=None):
+    
     conditions = []
     sql = "SELECT COUNT("+col+") FROM "+table
     if mins_since:
@@ -107,6 +111,7 @@ def count_rows(table='swaps', col='UUID', mins_since=None):
 
 def get_failed(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None, maker_version=None, taker_version=None,
                              maker_pubkey=None, taker_pubkey=None, taker_error_type: str=None, maker_error_type: str=None, mins_since=None):
+    
     json_obj = "JSON_OBJECT( \
         'uuid', uuid, \
         'started_at', started_at, \
@@ -157,6 +162,8 @@ def get_failed(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None,
     if mins_since:
         if mins_since != "--ALL--":
             conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
     if len(conditions) > 0:
         condition = " WHERE "+" AND ".join(conditions)
         sql += condition
@@ -166,6 +173,7 @@ def get_failed(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None,
 
 def get_success(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None, maker_version=None, taker_version=None,
                              maker_pubkey=None, taker_pubkey=None, mins_since=None):
+    
     json_obj = "JSON_OBJECT( \
         'uuid', uuid, \
         'started_at', started_at, \
@@ -206,6 +214,8 @@ def get_success(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None
     if mins_since:
         if mins_since != "--ALL--":
             conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
     if len(conditions) > 0:
         condition = " WHERE "+" AND ".join(conditions)
         sql += condition
@@ -213,16 +223,21 @@ def get_success(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None
     result = cursor.fetchall()
     return result
 
-def get_failed_count(group_by, maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None, maker_version=None, taker_version=None,
-                             maker_pubkey=None, taker_pubkey=None, taker_error_type: str=None, maker_error_type: str=None, mins_since=None):
+def get_failed_count(group_by, maker_coin=None, taker_coin=None, 
+                               maker_gui=None, taker_gui=None,
+                               maker_version=None, taker_version=None,
+                               maker_pubkey=None, taker_pubkey=None,
+                               taker_error_type=None, maker_error_type=None,
+                               mins_since=None, order_by=None):
+    
     if group_by == '--ALL--':
         group_by == 'uuid'
     json_obj = "JSON_OBJECT( \
-            "+group_by+", COUNT("+group_by+") \
+            IFNULL("+group_by+",'N/A'), COUNT(IFNULL("+group_by+",'N/A')) \
         )"
     sql = "SELECT "+json_obj+" FROM swaps_failed"
     conditions = [] 
-    conditions.append(group_by+" IS NOT NULL")
+    #conditions.append(group_by+" IS NOT NULL")
     if taker_coin:
         if taker_coin != "--ALL--":
             conditions.append("taker_coin = '"+taker_coin+"'")
@@ -230,7 +245,9 @@ def get_failed_count(group_by, maker_coin=None, taker_coin=None, maker_gui=None,
         if maker_coin != "--ALL--":
             conditions.append("maker_coin = '"+maker_coin+"'")
     if taker_gui:
-        if taker_gui != "--ALL--":
+        if taker_gui == "N/A":
+            conditions.append("taker_gui IS NULL")
+        elif taker_gui != "--ALL--":
             conditions.append("taker_gui = '"+taker_gui+"'")
     if maker_error_type:
         if maker_error_type != "--ALL--":
@@ -239,7 +256,9 @@ def get_failed_count(group_by, maker_coin=None, taker_coin=None, maker_gui=None,
         if taker_error_type != "--ALL--":
             conditions.append("taker_error_type = '"+taker_error_type+"'")
     if maker_gui:
-        if maker_gui != "--ALL--":
+        if maker_gui == "N/A":
+            conditions.append("maker_gui IS NULL")
+        elif maker_gui != "--ALL--":
             conditions.append("maker_gui = '"+maker_gui+"'")
     if taker_version:
         if taker_version != "--ALL--":
@@ -253,24 +272,33 @@ def get_failed_count(group_by, maker_coin=None, taker_coin=None, maker_gui=None,
     if mins_since:
         if mins_since != "--ALL--":
             conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan  
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
     if len(conditions) > 0:
         condition = " WHERE "+" AND ".join(conditions)
         sql += condition
     sql += " GROUP BY "+group_by
+    if order_by:
+        sql += " ORDER BY "+order_by
+    logger.info(sql)
     cursor.execute(sql)
     result = cursor.fetchall()
     return result
 
-def get_success_count(group_by, maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None, maker_version=None, taker_version=None,
-                             maker_pubkey=None, taker_pubkey=None, mins_since=None):
+def get_success_count(group_by, maker_coin=None, taker_coin=None,
+                                maker_gui=None, taker_gui=None,
+                                maker_version=None, taker_version=None,
+                                maker_pubkey=None, taker_pubkey=None,
+                                mins_since=None, order_by=None):
+    
     if group_by == '--ALL--':
         group_by == 'uuid'
     json_obj = "JSON_OBJECT( \
-            "+group_by+", COUNT("+group_by+") \
+            IFNULL("+group_by+",'N/A'), COUNT(IFNULL("+group_by+",'N/A')) \
         )"
     sql = "SELECT "+json_obj+" FROM swaps"
     conditions = []
-    conditions.append(group_by+" IS NOT NULL")
+    #conditions.append(group_by+" IS NOT NULL")
     if taker_coin:
         if taker_coin != "--ALL--":
             conditions.append("taker_coin = '"+taker_coin+"'")
@@ -278,10 +306,14 @@ def get_success_count(group_by, maker_coin=None, taker_coin=None, maker_gui=None
         if maker_coin != "--ALL--":
             conditions.append("maker_coin = '"+maker_coin+"'")
     if taker_gui:
-        if taker_gui != "--ALL--":
+        if taker_gui == "N/A":
+            conditions.append("taker_gui IS NULL")
+        elif taker_gui != "--ALL--":
             conditions.append("taker_gui = '"+taker_gui+"'")
     if maker_gui:
-        if maker_gui != "--ALL--":
+        if maker_gui == "N/A":
+            conditions.append("maker_gui IS NULL")
+        elif maker_gui != "--ALL--":
             conditions.append("maker_gui = '"+maker_gui+"'")
     if taker_version:
         if taker_version != "--ALL--":
@@ -295,16 +327,25 @@ def get_success_count(group_by, maker_coin=None, taker_coin=None, maker_gui=None
     if mins_since:
         if mins_since != "--ALL--":
             conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
     if len(conditions) > 0:
         condition = " WHERE "+" AND ".join(conditions)
         sql += condition
     sql += " GROUP BY "+group_by
+    if order_by:
+        sql += " ORDER BY "+order_by
+    logger.info(sql)
     cursor.execute(sql)
     result = cursor.fetchall()
     return result
 
-def get_taker_volume(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None, maker_version=None, taker_version=None,
-                             maker_pubkey=None, taker_pubkey=None, mins_since=None):
+def get_taker_volume(maker_coin=None, taker_coin=None,
+                     maker_gui=None, taker_gui=None,
+                     maker_version=None, taker_version=None,
+                     maker_pubkey=None, taker_pubkey=None,
+                     mins_since=None):
+    
     json_obj = "JSON_OBJECT('coin', taker_coin, 'volume', SUM(taker_amount))"
     sql = "SELECT "+json_obj+" FROM swaps"
     conditions = []
@@ -332,17 +373,24 @@ def get_taker_volume(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui
     if mins_since:
         if mins_since != "--ALL--":
             conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
     if len(conditions) > 0:
         condition = " WHERE "+" AND ".join(conditions)
         sql += condition
     sql += " GROUP BY taker_coin"
     sql += " ORDER BY taker_coin"
+    print(sql)
     cursor.execute(sql)
     result = cursor.fetchall()
     return result
 
-def get_maker_volume(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui=None, maker_version=None, taker_version=None,
-                             maker_pubkey=None, taker_pubkey=None, mins_since=None):
+def get_maker_volume(maker_coin=None, taker_coin=None,
+                     maker_gui=None, taker_gui=None,
+                     maker_version=None, taker_version=None,
+                     maker_pubkey=None, taker_pubkey=None,
+                     mins_since=None):
+    
     json_obj = "JSON_OBJECT('coin', maker_coin, 'volume', SUM(maker_amount))"
     sql = "SELECT "+json_obj+" FROM swaps"
     conditions = []
@@ -370,6 +418,8 @@ def get_maker_volume(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui
     if mins_since:
         if mins_since != "--ALL--":
             conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
     if len(conditions) > 0:
         condition = " WHERE "+" AND ".join(conditions)
         sql += condition
@@ -379,8 +429,11 @@ def get_maker_volume(maker_coin=None, taker_coin=None, maker_gui=None, taker_gui
     result = cursor.fetchall()
     return result
 
-def get_mean_maker_price_KMD(maker_gui=None, taker_gui=None, maker_version=None, taker_version=None,
-                             maker_pubkey=None, taker_pubkey=None, mins_since=None):
+def get_mean_maker_price_KMD(maker_gui=None, taker_gui=None,
+                             maker_version=None, taker_version=None,
+                             maker_pubkey=None, taker_pubkey=None,
+                             mins_since=None):
+    
     json_obj = "JSON_OBJECT('maker_coin', maker_coin, 'taker_coin', taker_coin, \
                             'maker_amount', SUM(taker_amount), 'taker_amount', SUM(maker_amount), \
                             'KMD_price',  SUM(taker_amount)/SUM(maker_amount) \
@@ -405,6 +458,8 @@ def get_mean_maker_price_KMD(maker_gui=None, taker_gui=None, maker_version=None,
     if mins_since:
         if mins_since != "--ALL--":
             conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
     if len(conditions) > 0:
         condition = " WHERE "+" AND ".join(conditions)
         sql += condition
@@ -415,8 +470,11 @@ def get_mean_maker_price_KMD(maker_gui=None, taker_gui=None, maker_version=None,
 
     return result
 
-def get_mean_taker_price_KMD(maker_gui=None, taker_gui=None, maker_version=None, taker_version=None,
-                             maker_pubkey=None, taker_pubkey=None, mins_since=None):
+def get_mean_taker_price_KMD(maker_gui=None, taker_gui=None,
+                             maker_version=None, taker_version=None,
+                             maker_pubkey=None, taker_pubkey=None,
+                             mins_since=None):
+    
     json_obj = "JSON_OBJECT('maker_coin', maker_coin, 'taker_coin', taker_coin, \
                             'maker_amount', SUM(taker_amount), 'taker_amount', SUM(maker_amount), \
                             'KMD_price',  SUM(maker_amount)/SUM(taker_amount) \
@@ -429,6 +487,12 @@ def get_mean_taker_price_KMD(maker_gui=None, taker_gui=None, maker_version=None,
     if maker_gui:
         if maker_gui != "--ALL--":
             conditions.append("maker_gui = '"+maker_gui+"'")
+    if taker_coin:
+        if taker_coin != "--ALL--":
+            conditions.append("taker_coin = '"+taker_coin+"'")
+    if maker_coin:
+        if maker_coin != "--ALL--":
+            conditions.append("maker_coin = '"+maker_coin+"'")
     if taker_version:
         if taker_version != "--ALL--":
             conditions.append("taker_version = '"+taker_version+"'")
@@ -441,11 +505,118 @@ def get_mean_taker_price_KMD(maker_gui=None, taker_gui=None, maker_version=None,
     if mins_since:
         if mins_since != "--ALL--":
             conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
     if len(conditions) > 0:
         condition = " WHERE "+" AND ".join(conditions)
         sql += condition
     sql += " GROUP BY taker_coin"
     sql += " ORDER BY taker_coin"
+    cursor.execute(sql)
+    result = cursor.fetchall()
+
+    return result
+
+
+def get_success_count_by_day(maker_coin=None, taker_coin=None,
+                                maker_gui=None, taker_gui=None,
+                                maker_version=None, taker_version=None,
+                                maker_pubkey=None, taker_pubkey=None,
+                                mins_since=None):
+    logger.info('get_success_count_by_day')
+    mydb = mysql.connector.connect(
+      host=os.getenv("hostname"),
+      user=os.getenv("username"),
+      passwd=os.getenv("password"),
+      database=os.getenv("db")
+    )
+    conditions = []
+
+    sql="SELECT CONCAT_WS('-', YEAR(started_at), MONTH(started_at), DAY(started_at)) as 'timestr', COUNT(*) as 'count' FROM swaps"
+    if taker_gui:
+        if taker_gui != "--ALL--":
+            conditions.append("taker_gui = '"+taker_gui+"'")
+    if maker_gui:
+        if maker_gui != "--ALL--":
+            conditions.append("maker_gui = '"+maker_gui+"'")
+    if taker_coin:
+        if taker_coin != "--ALL--":
+            conditions.append("taker_coin = '"+taker_coin+"'")
+    if maker_coin:
+        if maker_coin != "--ALL--":
+            conditions.append("maker_coin = '"+maker_coin+"'")
+    if taker_version:
+        if taker_version != "--ALL--":
+            conditions.append("taker_version = '"+taker_version+"'")
+    if maker_version:
+        if maker_version != "--ALL--":
+            conditions.append("maker_version = '"+maker_version+"'")
+    if taker_pubkey:
+        if taker_pubkey != "--ALL--":
+            conditions.append("taker_pubkey = '"+taker_pubkey+"'")
+    if mins_since:
+        if mins_since != "--ALL--":
+            conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
+    if len(conditions) > 0:
+        condition = " WHERE "+" AND ".join(conditions)
+        sql += condition
+    sql += " GROUP BY CONCAT_WS('-', YEAR(started_at), MONTH(started_at), DAY(started_at))"
+    sql += " ORDER BY CONCAT_WS('-', YEAR(started_at), MONTH(started_at), DAY(started_at))"
+    logger.info(sql)
+    cursor.execute(sql)
+    result = cursor.fetchall()
+
+    return result
+    
+def get_fail_count_by_day(maker_coin=None, taker_coin=None,
+                                maker_gui=None, taker_gui=None,
+                                maker_version=None, taker_version=None,
+                                maker_pubkey=None, taker_pubkey=None,
+                                mins_since=None):
+    logger.info('get_fail_count_by_day')
+    mydb = mysql.connector.connect(
+      host=os.getenv("hostname"),
+      user=os.getenv("username"),
+      passwd=os.getenv("password"),
+      database=os.getenv("db")
+    )
+    conditions = []
+
+    sql="SELECT CONCAT_WS('-', YEAR(started_at), MONTH(started_at), DAY(started_at)) as 'timestr', COUNT(*) as 'count' FROM swaps_failed"
+    if taker_gui:
+        if taker_gui != "--ALL--":
+            conditions.append("taker_gui = '"+taker_gui+"'")
+    if maker_gui:
+        if maker_gui != "--ALL--":
+            conditions.append("maker_gui = '"+maker_gui+"'")
+    if taker_coin:
+        if taker_coin != "--ALL--":
+            conditions.append("taker_coin = '"+taker_coin+"'")
+    if maker_coin:
+        if maker_coin != "--ALL--":
+            conditions.append("maker_coin = '"+maker_coin+"'")
+    if taker_version:
+        if taker_version != "--ALL--":
+            conditions.append("taker_version = '"+taker_version+"'")
+    if maker_version:
+        if maker_version != "--ALL--":
+            conditions.append("maker_version = '"+maker_version+"'")
+    if taker_pubkey:
+        if taker_pubkey != "--ALL--":
+            conditions.append("taker_pubkey = '"+taker_pubkey+"'")
+    if mins_since:
+        if mins_since != "--ALL--":
+            conditions.append("started_at >= now() - INTERVAL "+str(mins_since)+" MINUTE")
+    # ignore stresstest timespan
+    conditions.append("(UNIX_TIMESTAMP(started_at) <= 1572436800 OR UNIX_TIMESTAMP(started_at) >= 1572609600)")
+    if len(conditions) > 0:
+        condition = " WHERE "+" AND ".join(conditions)
+        sql += condition
+    sql += " GROUP BY CONCAT_WS('-', YEAR(started_at), MONTH(started_at), DAY(started_at))"
+    sql += " ORDER BY CONCAT_WS('-', YEAR(started_at), MONTH(started_at), DAY(started_at))"
+    logger.info(sql)
     cursor.execute(sql)
     result = cursor.fetchall()
 

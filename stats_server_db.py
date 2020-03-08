@@ -7,6 +7,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from threading import Thread
 from lib import stats_lib, dblib
 from datetime import datetime, timezone
+import json
 import uvicorn 
 import logging
 import logging.handlers
@@ -55,27 +56,33 @@ async def success_swaps(taker_coin: str=None, maker_coin: str=None, taker_gui: s
     }
 
 @app.get('/atomicstats/api/fail_swaps_count')
-async def fail_swaps(group_by, taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+async def fail_swaps_count(group_by, taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
                      taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
-                     taker_error_type: str=None, maker_error_type: str=None,mins_since: int=None):
+                     taker_error_type: str=None, maker_error_type: str=None, mins_since: int=None, order_by: str=None):
     resp = dblib.get_failed_count(group_by, maker_coin, taker_coin, maker_gui, taker_gui, taker_error_type, maker_error_type, 
-                            maker_version, taker_version, maker_pubkey, taker_pubkey, mins_since)
+                            maker_version, taker_version, maker_pubkey, taker_pubkey, mins_since, order_by)
+    fail_swaps_dict = {}
+    for item in resp:
+        fail_swaps_dict.update(json.loads(item[0]))
     return {
         "result":"success",
-        "count":len(resp),
-        "message": resp
+        "count":len(fail_swaps_dict),
+        "message": fail_swaps_dict
     }
 
 @app.get('/atomicstats/api/success_swaps_count')
-async def success_swaps(group_by, taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+async def success_swaps_count(group_by, taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
                      taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
-                     mins_since: int=None):
+                     mins_since: int=None, order_by: str=None):
     resp = dblib.get_success_count(group_by, maker_coin, taker_coin, maker_gui, taker_gui, maker_version, taker_version,
-                             maker_pubkey, taker_pubkey, mins_since)
+                             maker_pubkey, taker_pubkey, mins_since, order_by)
+    success_swaps_dict = {}
+    for item in resp:  
+        success_swaps_dict.update(json.loads(item[0]))
     return {
         "result":"success",
-        "count":len(resp),
-        "message": resp
+        "count":len(success_swaps_dict),
+        "message": success_swaps_dict
     }
 
 @app.get('/atomicstats/api/taker_volume')
@@ -321,6 +328,7 @@ async def get_unique(table, column, since=None):
         "message": resp
     }
 
+
 @app.get('/atomicstats/api/v1.0/get_unique_filter_values')
 async def get_unique_filter_values(table):
     resp = dblib.get_unique_filter_values(table)
@@ -329,6 +337,39 @@ async def get_unique_filter_values(table):
         "count":len(resp),
         "message": resp
     }
+
+@app.get('/atomicstats/api/success_count_by_day')
+async def success_count_by_day(taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     mins_since: int=None):
+    resp = dblib.get_success_count_by_day(maker_coin, taker_coin, maker_gui, taker_gui, maker_version, taker_version,
+                                          maker_pubkey, taker_pubkey, mins_since)
+    resp = list_to_json(resp)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+@app.get('/atomicstats/api/fail_count_by_day')
+async def fail_count_by_day(taker_coin: str=None, maker_coin: str=None, taker_gui: str=None, maker_gui: str=None,
+                     taker_version: str=None, maker_version: str=None, taker_pubkey: str=None, maker_pubkey: str=None, 
+                     mins_since: int=None):
+    resp = dblib.get_fail_count_by_day(maker_coin, taker_coin, maker_gui, taker_gui, maker_version, taker_version,
+                                       maker_pubkey, taker_pubkey, mins_since)
+    resp = list_to_json(resp)
+    return {
+        "result":"success",
+        "count":len(resp),
+        "message": resp
+    }
+
+def list_to_json(resp):
+    json_resp = {}
+    for item in resp:
+        json_resp.update({item[0]:item[1]})
+    return json_resp
+
 
 # optional: pair, dates
 # @app.route('/atomicstats/api/v1.0/get_volumes', methods=['GET'])
